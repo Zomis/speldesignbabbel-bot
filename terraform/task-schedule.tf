@@ -35,7 +35,7 @@ resource "aws_scheduler_schedule_group" "speldesignbabbel_tasks" {
 resource "aws_scheduler_schedule" "week_update" {
   group_name          = aws_scheduler_schedule_group.speldesignbabbel_tasks.name
   name                = "discord-post"
-  schedule_expression = "cron(0 9 ? * MON *)"
+  schedule_expression = "cron(0 6 ? * MON *)"
   description         = "Make Discord post"
   flexible_time_window {
     mode = "OFF"
