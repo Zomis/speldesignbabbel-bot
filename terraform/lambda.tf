@@ -12,7 +12,7 @@ resource "aws_lambda_function" "speldesignbabbel_lambda" {
   role          = aws_iam_role.lambda_role.arn
   description   = "Automatically posts updates on Discord about weekly active threads"
 
-  runtime = "nodejs18.x"
+  runtime = "nodejs22.x"
   handler = "main.handler"
 
   memory_size = 512
