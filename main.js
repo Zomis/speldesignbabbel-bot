@@ -70,12 +70,15 @@ function dateToSnowflake(date) {
 async function threadActiveInTime(id) {
   const response = await discordFetch(`channels/${id}/messages?after=${snowflake}`);
   const json = await response.json();
+  let messageCount = 0;
+  let users = new Set();
   for (const message of json) {
     if (isInTimeframe(new Date(message.timestamp))) {
-      return true;
+      messageCount++;
+      users.add(message.author.id);
     }
   }
-  return false;
+  return { messageCount, users: users.size };
 }
 
 async function getActiveThreads() {
@@ -83,10 +86,12 @@ async function getActiveThreads() {
   console.log(threads);
   let arr = [];
   for (const thread of threads) {
-    const active = await threadActiveInTime(thread.id);
-    if (active) {
+    const { messageCount, users } = await threadActiveInTime(thread.id);
+    if (messageCount > 0) {
+      thread.messageCount = messageCount;
+      thread.users = users;
       arr.push(thread);
-      console.log("Active: " + thread.id + ": " + thread.name);
+      console.log(`Active: ${thread.id} ${thread.name} (${messageCount} messages by ${users} users)`);
     }
   }
   return arr;
@@ -148,10 +153,16 @@ async function makeUpdateMessage() {
   console.log(active.map(e => e.id));
 
   stats = stats.filter(thread => active.some(a => a.id == thread.id));
-  stats.forEach(thread => { thread.count++; });
+  stats.forEach(stat => { stat.count++; });
   active.forEach(a => {
-    if (!stats.some(thread => thread.id == a.id)) {
-      stats.push({ id: a.id, count: 0 });
+    const existingStat = stats.find(stat => stat.id == a.id);
+
+    if (!existingStat) {
+      console.log("Newcomer! " + a.name);
+      stats.push({ id: a.id, count: 0, messageCount: a.messageCount, users: a.users });
+    } else {
+      existingStat.messageCount = a.messageCount;
+      existingStat.users = a.users;
     }
   });
 
