@@ -33,15 +33,18 @@ function getStartOfWeekBefore(time) {
   return thisWeek;
 }
 
-const startTime = getStartOfWeekBefore(getStartOfWeek());
-const endTime = getStartOfWeek();
-const snowflake = dateToSnowflake(startTime);
+function getStartOfWeekAfter(time) {
+  const thisWeek = new Date(time);
+  thisWeek.setDate(thisWeek.getDate() + 7);
+  thisWeek.setHours(0, 0, 0, 0);
+  return thisWeek;
+}
 
 const superStreak = "❤️‍🔥";
 const streak = "🔥";
 
-function isInTimeframe(time) {
-  return time.getTime() >= startTime.getTime() && time.getTime() < endTime.getTime();
+function isInTimeframe(time, timeframe) {
+  return time.getTime() >= timeframe.startTime.getTime() && time.getTime() < timeframe.endTime.getTime();
 }
 
 function discordFetch(url) {
@@ -67,13 +70,14 @@ function dateToSnowflake(date) {
   return BigInt(date.getTime() - discordEpoch) << 22n;
 }
 
-async function threadActiveInTime(id) {
+async function threadActiveInTime(id, timeframe) {
+  const snowflake = dateToSnowflake(timeframe.startTime);
   const response = await discordFetch(`channels/${id}/messages?after=${snowflake}`);
   const json = await response.json();
   let messageCount = 0;
   let users = new Set();
   for (const message of json) {
-    if (isInTimeframe(new Date(message.timestamp))) {
+    if (isInTimeframe(new Date(message.timestamp), timeframe)) {
       messageCount++;
       users.add(message.author.id);
     }
@@ -81,12 +85,12 @@ async function threadActiveInTime(id) {
   return { messageCount, users: users.size };
 }
 
-async function getActiveThreads() {
+async function getActiveThreads(timeframe) {
   const threads = await activeThreads();
   console.log(threads);
   let arr = [];
   for (const thread of threads) {
-    const { messageCount, users } = await threadActiveInTime(thread.id);
+    const { messageCount, users } = await threadActiveInTime(thread.id, timeframe);
     if (messageCount > 0) {
       thread.messageCount = messageCount;
       thread.users = users;
@@ -97,8 +101,8 @@ async function getActiveThreads() {
   return arr;
 }
 
-async function getLastStats() {
-//  const r = await discordFetch('channels/1460761233358721216/messages/1489234218931458218');
+async function getLastStats(timeframe) {
+  const snowflake = dateToSnowflake(timeframe.startTime);
   const messages = await discordFetch(`channels/${outputChannel}/messages?after=${snowflake}`);
 
   const json = await messages.json();
@@ -137,19 +141,19 @@ function formatEmoji(count) {
   for (let i = 1; i <= streaks; i++) {
     s += streak;
   }
-  return s;
+  return s.length === 0 ? s : s + " ";
 }
 
 function formatMessage(newStats) {
-  const stats = newStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}`).join("\n");
+  const stats = newStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount} messages by ${s.users} users)`).join("\n");
   return `<@&906328017255673946>\nLast weeks active posts in the game design forums:\n${stats}\n\n🔥 = Hot streak!\n❤️‍🔥 = Super hot streak! (= 5 🔥 )`;
 }
 
-async function makeUpdateMessage() {
-  let stats = await getLastStats();
+async function makeUpdateMessage(timeframe) {
+  let stats = await getLastStats(timeframe);
   // console.log(JSON.stringify(stats));
 
-  const active = await getActiveThreads();
+  const active = await getActiveThreads(timeframe);
   console.log(active.map(e => e.id));
 
   stats = stats.filter(thread => active.some(a => a.id == thread.id));
@@ -186,19 +190,27 @@ async function postMessage(text) {
   });
 }
 
-//await postUpdate();
-//await postMessage("Test");
+if (typeof exports !== "undefined") {
+  const startTime = getStartOfWeekBefore(getStartOfWeek());
+  const endTime = getStartOfWeek();
 
-exports.handler = async (event) => {
-  const updateMessage = await makeUpdateMessage();
-  console.log(updateMessage);
-  await postMessage(updateMessage);
+  exports.handler = async (event) => {
+    const updateMessage = await makeUpdateMessage({ startTime, endTime });
+    console.log(updateMessage);
+    await postMessage(updateMessage);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "Lambda done" }),
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Lambda done" }),
+    };
   };
-};
+} else {
+  const startTime = getStartOfWeek();
+  const endTime = getStartOfWeekAfter(startTime);
+
+  const updateMessage = await makeUpdateMessage({ startTime, endTime });
+  console.log(updateMessage);
+}
 
 /*
   content: '<@&906328017255673946> \n' +
