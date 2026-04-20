@@ -153,6 +153,11 @@ function formatMessage(newStats) {
   return `<@&906328017255673946>\nLast weeks active posts in the game design forums:\n${stats}\n\n🔥 = Hot streak!\n❤️‍🔥 = Super hot streak! (= 5 🔥 )`;
 }
 
+function formatDisappearingMessage(disappearedMessage) {
+  if (disappearedMessage.length === 0) return "";
+  return "\n\nPrevious streaks lost:\n" + disappearedMessage;
+}
+
 async function makeUpdateMessage(timeframe) {
   let stats = await getLastStats(timeframe);
   // console.log(JSON.stringify(stats));
@@ -160,6 +165,8 @@ async function makeUpdateMessage(timeframe) {
   const active = await getActiveThreads(timeframe);
   console.log(active.map(e => e.id));
 
+  const disappearedStats = stats.filter(stat => !active.some(a => a.id == stat.id) && stat.count > 0);
+  const disappearedMessage = disappearedStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} lost its streak of ${formatEmoji(s.count)}`).join("\n");
   stats = stats.filter(thread => active.some(a => a.id == thread.id));
   stats.forEach(stat => { stat.count++; });
   active.forEach(a => {
@@ -174,8 +181,7 @@ async function makeUpdateMessage(timeframe) {
     }
   });
 
-  console.log(formatMessage(stats));
-  return formatMessage(stats);
+  return formatMessage(stats) + formatDisappearingMessage(disappearedMessage);
 }
 
 async function postMessage(text) {
