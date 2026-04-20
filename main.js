@@ -145,7 +145,7 @@ function formatEmoji(count) {
 }
 
 function formatMessage(newStats) {
-  const stats = newStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount} messages by ${s.users} users)`).join("\n");
+  const stats = newStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount} msgs, ${s.users} users)`).join("\n");
   return `<@&906328017255673946>\nLast weeks active posts in the game design forums:\n${stats}\n\n🔥 = Hot streak!\n❤️‍🔥 = Super hot streak! (= 5 🔥 )`;
 }
 
