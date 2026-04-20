@@ -12,6 +12,10 @@ const botToken = process.env.DISCORD_BOT_TOKEN
 const outputChannel = process.env.OUTPUT_CHANNEL
 const inputChannel = process.env.INPUT_CHANNEL
 const server = process.env.DISCORD_SERVER
+if (!outputChannel || !inputChannel ||!server) {
+  console.error("Missing one or more environment variables: DISCORD_SERVER, INPUT_CHANNEL, OUTPUT_CHANNEL");
+  throw new Error("Missing environment variables");
+}
 
 function getStartOfWeek() {
   const now = new Date();
