@@ -1,6 +1,6 @@
 data "archive_file" "speldesignbabbel_code" {
   type        = "zip"
-  source_file = "../main.js"
+  source_dir = "../lambda"
   output_path = "lambda.zip"
 }
 

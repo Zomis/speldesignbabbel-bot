@@ -195,24 +195,23 @@ async function postMessage(text) {
   });
 }
 
-if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+export async function handler(event) {
   console.log("Running real thing");
   const startTime = getStartOfWeekBefore(getStartOfWeek());
   const endTime = getStartOfWeek();
   console.log("Start time", startTime);
   console.log("End time", endTime);
+  const updateMessage = await makeUpdateMessage({ startTime, endTime });
+  console.log(updateMessage);
+  await postMessage(updateMessage);
 
-  exports.handler = async (event) => {
-    const updateMessage = await makeUpdateMessage({ startTime, endTime });
-    console.log(updateMessage);
-    await postMessage(updateMessage);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: "Lambda done" }),
-    };
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: "Lambda done" }),
   };
-} else {
+}
+
+if (!process.env.AWS_LAMBDA_FUNCTION_VERSION) {
   const startTime = getStartOfWeek();
   const endTime = getStartOfWeekAfter(startTime);
   console.log("Start time", startTime);
