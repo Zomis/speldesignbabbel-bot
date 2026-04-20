@@ -91,7 +91,6 @@ async function threadActiveInTime(id, timeframe) {
 
 async function getActiveThreads(timeframe) {
   const threads = await activeThreads();
-  console.log(threads);
   let arr = [];
   for (const thread of threads) {
     const { messageCount, users } = await threadActiveInTime(thread.id, timeframe);
@@ -111,8 +110,6 @@ async function getLastStats(timeframe) {
 
   const json = await messages.json();
   const r = json.find(m => m.content.indexOf("active posts in the game design forums") > 0);
-  console.log("Matching last stats message:");
-  console.log(r);
 
   const lines = r.content.split('\n');
   let arr = [];
@@ -125,7 +122,6 @@ async function getLastStats(timeframe) {
       const emojis = hasSpace ? line.substring(spaceIndex) : '';
       const superCount = (emojis.match(/❤️‍🔥/g) || []).length;
       const count = (emojis.match(/🔥/g) || []).length - superCount;
-      console.log(threadId, emojis, superCount, count);
       arr.push({
         id: threadId,
         count: superCount * 5 + count
@@ -160,10 +156,9 @@ function formatDisappearingMessage(disappearedMessage) {
 
 async function makeUpdateMessage(timeframe) {
   let stats = await getLastStats(timeframe);
-  // console.log(JSON.stringify(stats));
+  console.log("Previous stats", JSON.stringify(stats));
 
   const active = await getActiveThreads(timeframe);
-  console.log(active.map(e => e.id));
 
   const disappearedStats = stats.filter(stat => !active.some(a => a.id == stat.id) && stat.count > 0);
   const disappearedMessage = disappearedStats.map(s => `https://discord.com/channels/906297567011291177/${s.id} lost its streak of ${formatEmoji(s.count)}`).join("\n");
@@ -201,8 +196,11 @@ async function postMessage(text) {
 }
 
 if (typeof exports !== "undefined") {
+  console.log("Running real thing");
   const startTime = getStartOfWeekBefore(getStartOfWeek());
   const endTime = getStartOfWeek();
+  console.log("Start time", startTime);
+  console.log("End time", endTime);
 
   exports.handler = async (event) => {
     const updateMessage = await makeUpdateMessage({ startTime, endTime });
@@ -217,6 +215,8 @@ if (typeof exports !== "undefined") {
 } else {
   const startTime = getStartOfWeek();
   const endTime = getStartOfWeekAfter(startTime);
+  console.log("Start time", startTime);
+  console.log("End time", endTime);
 
   const updateMessage = await makeUpdateMessage({ startTime, endTime });
   console.log(updateMessage);
