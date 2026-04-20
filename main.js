@@ -195,7 +195,7 @@ async function postMessage(text) {
   });
 }
 
-if (typeof exports !== "undefined") {
+if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
   console.log("Running real thing");
   const startTime = getStartOfWeekBefore(getStartOfWeek());
   const endTime = getStartOfWeek();
