@@ -151,7 +151,7 @@ function formatMessage(newStats) {
 
 function formatDisappearingMessage(disappearedMessage) {
   if (disappearedMessage.length === 0) return "";
-  return "\n\nPrevious streaks lost:\n" + disappearedMessage;
+  return "\n\nOld streaks not active this week:\n" + disappearedMessage;
 }
 
 async function makeUpdateMessage(timeframe) {
