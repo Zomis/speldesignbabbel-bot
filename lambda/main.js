@@ -175,8 +175,8 @@ async function makeUpdateMessage(timeframe) {
       existingStat.users = a.users;
     }
   });
-
-  return formatMessage(stats) + formatDisappearingMessage(disappearedMessage);
+  console.log(formatDisappearingMessage(disappearedMessage));
+  return formatMessage(stats);// + formatDisappearingMessage(disappearedMessage);
 }
 
 async function postMessage(text) {
