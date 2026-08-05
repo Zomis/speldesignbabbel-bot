@@ -1,19 +1,13 @@
-data "archive_file" "speldesignbabbel_code" {
-  type        = "zip"
-  source_dir = "../lambda"
-  output_path = "lambda.zip"
-}
-
 resource "aws_lambda_function" "speldesignbabbel_lambda" {
-  source_code_hash =  data.archive_file.speldesignbabbel_code.output_base64sha256
-  filename         = "lambda.zip"
+  filename         = "../lambda/build/libs/speldesignbabbel-1.0.0-all.jar"
+  source_code_hash = filebase64sha256("../lambda/build/libs/speldesignbabbel-1.0.0-all.jar")
 
   function_name = "speldesignbabbel-bot"
   role          = aws_iam_role.lambda_role.arn
   description   = "Automatically posts updates on Discord about weekly active threads"
 
-  runtime = "nodejs22.x"
-  handler = "main.handler"
+  runtime = "java21"
+  handler = "net.zomis.speldesignbabbel.Handler::handleRequest"
 
   memory_size = 512
   timeout     = 30
@@ -21,10 +15,10 @@ resource "aws_lambda_function" "speldesignbabbel_lambda" {
   environment {
     variables = {
       DISCORD_BOT_TOKEN = local.bot_token
-      DISCORD_BOT_ID = local.bot_id
+      DISCORD_BOT_ID    = local.bot_id
 
       OUTPUT_CHANNEL = local.output_channel
-      INPUT_CHANNEL = local.input_channel
+      INPUT_CHANNEL  = local.input_channel
       DISCORD_SERVER = local.discord_server
     }
   }
