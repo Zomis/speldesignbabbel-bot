@@ -1,4 +1,5 @@
 *.bat
+.env
 
 lambda/build/
 lambda/.gradle/

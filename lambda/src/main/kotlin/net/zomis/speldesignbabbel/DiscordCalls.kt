@@ -1,14 +1,20 @@
 package net.zomis.speldesignbabbel
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 val botToken = requireEnv("DISCORD_BOT_TOKEN")
 val outputChannel = requireEnv("OUTPUT_CHANNEL")
@@ -31,6 +37,23 @@ fun activeThreads() = json.parseToJsonElement(discordFetch("channels/$inputChann
     .jsonObject["threads"]!!
     .jsonArray
 
+fun archivedThreads() = json.parseToJsonElement(discordFetch("channels/$inputChannel/threads/archived/public"))
+    .jsonObject["threads"]!!
+    .jsonArray
+
+fun findRelevantThreads(timeframe: Timeframe): List<JsonElement> {
+    val thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS)
+    val allThreads = if (timeframe.startTime.isBefore(thirtyDaysAgo)) {
+        archivedThreads() + activeThreads()
+    } else activeThreads()
+    return allThreads.filter {
+        val thread = it.jsonObject
+        val metadata = thread.get("thread_metadata")
+        if (metadata?.jsonObject?.get("archived")?.jsonPrimitive?.booleanOrNull == false) return@filter true
+        val archived = metadata?.jsonObject?.get("archive_timestamp")?.jsonPrimitive?.contentOrNull
+        archived == null || Instant.parse(archived).isAfter(timeframe.startTime)
+    }
+}
 
 fun discordFetch(url: String): String {
     val request = HttpRequest.newBuilder()

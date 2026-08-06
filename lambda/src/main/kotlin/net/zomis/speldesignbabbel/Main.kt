@@ -6,15 +6,16 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.time.Instant
+import java.time.*
+
 
 private const val DISCORD_EPOCH = 1_420_070_400_000L
 
 class Handler : RequestHandler<Map<String, Any?>, Map<String, Any>> {
     override fun handleRequest(input: Map<String, Any?>?, context: Context): Map<String, Any> {
         println("Running real thing")
-        val startTime = getStartOfWeekBefore(getStartOfWeek())
-        val endTime = getStartOfWeek()
+        val startTime = getStartOfWeekBefore(getStartOfWeek().atStartOfDay().atZone(stockholmZone).toInstant())
+        val endTime = getStartOfWeek().atStartOfDay().atZone(stockholmZone).toInstant()
         println("Start time $startTime")
         println("End time $endTime")
         val updateMessage = makeUpdateMessage(Timeframe(startTime, endTime))
@@ -29,12 +30,17 @@ class Handler : RequestHandler<Map<String, Any?>, Map<String, Any>> {
 }
 
 fun main() {
-    val startTime = getStartOfWeekBefore(getStartOfWeek())
-    val endTime = getStartOfWeek()
-    println("Start time $startTime")
-    println("End time $endTime")
+    val startTime = getStartOfWeek()
+    val endTime = getStartOfWeekAfter(startTime)
+//    val startTime = LocalDate.of(2026, Month.JULY, 27)
+//    val endTime = startTime.plusWeeks(1).atStartOfDay()
+    val startInstant = startTime.atStartOfDay().toInstant(stockholmZone.toZoneOffset())
+    val endInstant = startTime.findWeekEnd().toInstant(stockholmZone.toZoneOffset())
 
-    val updateMessage = makeUpdateMessage(Timeframe(startTime, endTime))
+    println("Start time $startTime -- $startInstant")
+    println("End time $endTime -- $endInstant")
+
+    val updateMessage = makeUpdateMessage(Timeframe(startInstant, endInstant))
     println(updateMessage)
 }
 
@@ -44,7 +50,8 @@ fun dateToSnowflake(date: Instant): Long {
 
 fun threadActiveInTime(id: String, timeframe: Timeframe): Pair<Int, Int> {
     val snowflake = dateToSnowflake(timeframe.startTime)
-    val messages = json.parseToJsonElement(discordFetch("channels/$id/messages?after=$snowflake")).jsonArray
+    val snowflakeEnd = dateToSnowflake(timeframe.endTime)
+    val messages = json.parseToJsonElement(discordFetch("channels/$id/messages?after=$snowflake&before=$snowflakeEnd")).jsonArray
     println(messages)
 
     var messageCount = 0
@@ -62,7 +69,8 @@ fun threadActiveInTime(id: String, timeframe: Timeframe): Pair<Int, Int> {
 
 fun getActiveThreads(timeframe: Timeframe): List<ActiveThread> {
     val arr = mutableListOf<ActiveThread>()
-    for (threadElement in activeThreads()) {
+    val findRelevantThreads = findRelevantThreads(timeframe)
+    for (threadElement in findRelevantThreads) {
         val thread = threadElement.jsonObject
         val id = thread["id"]!!.jsonPrimitive.content
         val name = thread["name"]?.jsonPrimitive?.contentOrNull ?: id
@@ -77,13 +85,19 @@ fun getActiveThreads(timeframe: Timeframe): List<ActiveThread> {
 
 fun getLastStats(timeframe: Timeframe): MutableList<ThreadStat> {
     val snowflake = dateToSnowflake(timeframe.startTime)
-    val messages = json.parseToJsonElement(discordFetch("channels/$outputChannel/messages?after=$snowflake")).jsonArray
+    val messages = json.parseToJsonElement(discordFetch("channels/$outputChannel/messages?after=$snowflake"))
+        .jsonArray//.sortedBy { it.jsonObject["timestamp"]!!.jsonPrimitive.content }
 
     val match = messages
-        .map { it.jsonObject }
-        .first { it["content"]!!.jsonPrimitive.content.contains("active posts in the game design forums") }
+        .first { it.jsonObject["content"]!!.jsonPrimitive.content.contains("posts in the game design forums") }
+    val allMessages = messages.drop(messages.indexOf(match))
+        .takeWhile {
+            val content = it.jsonObject["content"]!!.jsonPrimitive.content
+            val followup = content.contains("msgs") && !content.contains("posts in the game design forums")
+            followup || it == match
+        }
 
-    val lines = match["content"]!!.jsonPrimitive.content.split('\n')
+    val lines = allMessages.flatMap { it.jsonObject["content"]!!.jsonPrimitive.content.split('\n') }
     val arr = mutableListOf<ThreadStat>()
     val prefix = "https://discord.com/channels/$server/"
     for (line in lines) {
