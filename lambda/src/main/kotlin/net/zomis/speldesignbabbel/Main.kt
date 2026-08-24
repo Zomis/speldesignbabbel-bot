@@ -31,17 +31,19 @@ class Handler : RequestHandler<Map<String, Any?>, Map<String, Any>> {
 
 fun main() {
     val startTime = getStartOfWeek()
-    val endTime = getStartOfWeekAfter(startTime)
-//    val startTime = LocalDate.of(2026, Month.JULY, 27)
-//    val endTime = startTime.plusWeeks(1).atStartOfDay()
     val startInstant = startTime.atStartOfDay().toInstant(stockholmZone.toZoneOffset())
     val endInstant = startTime.findWeekEnd().toInstant(stockholmZone.toZoneOffset())
+    val timeframe = Timeframe(startInstant, endInstant).adjust(-7, ChronoUnit.DAYS)
 
-    println("Start time $startTime -- $startInstant")
-    println("End time $endTime -- $endInstant")
+    println("Timeframe $timeframe")
 
-    val updateMessage = makeUpdateMessage(Timeframe(startInstant, endInstant))
+    val updateMessage = makeUpdateMessage(timeframe)
     println(updateMessage)
+}
+
+fun fixMessage(url: String, content: String) {
+    val (channel, messageId) = url.split('/').takeLast(2)
+    updateMessage(channel, messageId, content)
 }
 
 fun dateToSnowflake(date: Instant): Long {
@@ -113,9 +115,7 @@ fun getLastStats(timeframe: Timeframe): MutableList<ThreadStat> {
             threadId = afterPrefix
             emojis = ""
         }
-        val superCount = Regex(SUPER_STREAK).findAll(emojis).count()
-        val count = Regex(STREAK).findAll(emojis).count() - superCount
-        arr.add(ThreadStat(id = threadId, count = superCount * 5 + count))
+        arr.add(ThreadStat(id = threadId, count = Streaks.count(emojis)))
     }
     return arr
 }
