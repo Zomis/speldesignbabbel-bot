@@ -34,7 +34,7 @@ fun main() {
     val startTime = getStartOfWeek()
     val startInstant = startTime.atStartOfDay().toInstant(stockholmZone.toZoneOffset())
     val endInstant = startTime.findWeekEnd().toInstant(stockholmZone.toZoneOffset())
-    val timeframe = Timeframe(startInstant, endInstant).adjust(-7, ChronoUnit.DAYS)
+    val timeframe = Timeframe(startInstant, endInstant).adjust(0, ChronoUnit.DAYS)
 
     println("Timeframe $timeframe")
 
@@ -95,7 +95,7 @@ fun getLastStats(timeframe: Timeframe): MutableList<ThreadStat> {
     val match = messages
         .firstOrNull { it.jsonObject["content"]!!.jsonPrimitive.content.contains("posts in the game design forums") }
         ?: throw IllegalStateException("No last stats found")
-    val allMessages = messages.drop(messages.indexOf(match))
+    val allMessages = messages.reversed().drop(messages.reversed().indexOf(match))
         .takeWhile {
             val content = it.jsonObject["content"]!!.jsonPrimitive.content
             val followup = content.contains("msgs") && !content.contains("posts in the game design forums")
