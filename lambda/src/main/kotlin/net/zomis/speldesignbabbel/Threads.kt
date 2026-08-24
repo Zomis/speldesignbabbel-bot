@@ -20,7 +20,11 @@ fun formatEmoji(count: Int): String {
 
 fun formatMessage(timeframe: Timeframe, newStats: List<ThreadStat>): String {
     val stats = newStats.joinToString("\n") { s ->
-        "https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount} msgs, ${s.users} users)"
+        if (s.messageCount >= 50) {
+            "https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount}+ msgs, ${s.users}+ users)"
+        } else {
+            "https://discord.com/channels/906297567011291177/${s.id} ${formatEmoji(s.count)}(${s.messageCount} msgs, ${s.users} users)"
+        }
     }
     val fmt = DateTimeFormatter.ISO_DATE
     val startDay = LocalDateTime.ofInstant(timeframe.startTime, ZoneId.systemDefault())
