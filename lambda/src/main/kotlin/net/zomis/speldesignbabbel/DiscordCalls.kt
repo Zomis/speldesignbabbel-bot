@@ -68,7 +68,19 @@ fun discordFetch(url: String): String {
     return response.body()
 }
 
-fun postMessage(text: String): String {
+fun updateMessage(channel: String, messageId: String, content: String) {
+    val jsonString = Json.encodeToString(mapOf("content" to content))
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create("https://discord.com/api/channels/$channel/messages/$messageId"))
+        .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonString))
+        .header("Content-Type", "application/json")
+        .header("Authorization", "Bot $botToken")
+        .header("User-Agent", "DiscordBot (https://www.zomis.net, 1)")
+        .build()
+    httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+}
+
+fun postMessage(text: String): Boolean {
     val payload = buildJsonObject {
         put("content", text)
     }.toString()
@@ -82,5 +94,18 @@ fun postMessage(text: String): String {
         .build()
 
     val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    return response.body()
+    println("postMessage returned " + response.statusCode())
+    println(response.body())
+    return response.statusCode() in 200..299
+}
+
+fun postMessageWithFallback(text: String): Boolean {
+    if (postMessage(text)) return true
+
+    val fitText = text.slice(0 until 2000)
+    val postTextSize = fitText.indexOfLast { it == '\n' }
+    val postText = text.slice(0 until postTextSize)
+    val nextText = text.substring(postTextSize + 1)
+
+    return postMessage(postText) && postMessageWithFallback(nextText)
 }

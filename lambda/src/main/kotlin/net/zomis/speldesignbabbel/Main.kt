@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.*
+import java.time.temporal.ChronoUnit
 
 
 private const val DISCORD_EPOCH = 1_420_070_400_000L
@@ -20,7 +21,7 @@ class Handler : RequestHandler<Map<String, Any?>, Map<String, Any>> {
         println("End time $endTime")
         val updateMessage = makeUpdateMessage(Timeframe(startTime, endTime))
         println(updateMessage)
-        postMessage(updateMessage)
+        postMessageWithFallback(updateMessage)
 
         return mapOf(
             "statusCode" to 200,
@@ -86,12 +87,14 @@ fun getActiveThreads(timeframe: Timeframe): List<ActiveThread> {
 }
 
 fun getLastStats(timeframe: Timeframe): MutableList<ThreadStat> {
-    val snowflake = dateToSnowflake(timeframe.startTime)
-    val messages = json.parseToJsonElement(discordFetch("channels/$outputChannel/messages?after=$snowflake"))
+    val snowflakeAfter = dateToSnowflake(timeframe.startTime)
+    val snowflakeBefore = dateToSnowflake(timeframe.endTime)
+    val messages = json.parseToJsonElement(discordFetch("channels/$outputChannel/messages?after=$snowflakeAfter&before=$snowflakeBefore"))
         .jsonArray//.sortedBy { it.jsonObject["timestamp"]!!.jsonPrimitive.content }
 
     val match = messages
-        .first { it.jsonObject["content"]!!.jsonPrimitive.content.contains("posts in the game design forums") }
+        .firstOrNull { it.jsonObject["content"]!!.jsonPrimitive.content.contains("posts in the game design forums") }
+        ?: throw IllegalStateException("No last stats found")
     val allMessages = messages.drop(messages.indexOf(match))
         .takeWhile {
             val content = it.jsonObject["content"]!!.jsonPrimitive.content
